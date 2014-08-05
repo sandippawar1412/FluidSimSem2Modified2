@@ -4,9 +4,23 @@
 #include <pthread.h>
 #include <omp.h>
 #include <sys/time.h>
-/*
+
+
+#define WG  //WG - With Graphics
+#undef WG
+
+int grid_size;
+int nthreads;
+#ifndef WG
 int main(int argc, char** argv)
 {
+	grid_size = GRID_SIZE;
+	nthreads = NTHREADS;	
+	if(argc>=2){
+	nthreads = atoi(argv[1]);
+	grid_size = atoi(argv[2]);
+	}
+ omp_set_num_threads(NTHREADS);
 	struct timeval tt1, tt2;
 	init();
 	int i=pthread_getconcurrency();
@@ -22,7 +36,7 @@ int main(int argc, char** argv)
 	}
 	return 0;
 }
-*/
+#endif
 
 
 void animate()
@@ -53,9 +67,12 @@ void openGlutWindow ( char* windowName) ;
 void reshape ( int w, int h ) ;
 void idleFun();
 
-
+#ifdef WG
 int main(int argc, char** argv)
 {
+	grid_size = GRID_SIZE;
+	nthreads = NTHREADS;	
+	
    omp_set_num_threads(NTHREADS);
    
    /*#pragma omp parallel
@@ -82,6 +99,7 @@ int main(int argc, char** argv)
    
    return 0; 
 }
+#endif
 
 void display(void){
 	preDisplay();

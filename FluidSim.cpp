@@ -24,7 +24,7 @@ void FluidSim :: init(GridStag* sGrid)
 
 void  FluidSim :: simulate(double timestep)
 {
-		struct timeval tt1, tt2;
+	struct timeval tt1, tt2;
 	
 	gettimeofday(&tt1, NULL);
 	float cflVal = cfl();
@@ -110,11 +110,13 @@ void  FluidSim :: simulate(double timestep)
 double FluidSim ::  cfl() //keep
 {
 	double maxVel = 0.0;
+//	#pragma omp parallel for
 	for(int y = 0;y < sGrid->nX; y++)
 		for(int x = 0;x < sGrid->nY+1; x++){
 			if(maxVel < fabs(sGrid->u(y,x)))
 				maxVel = fabs(sGrid->u(y,x));
 		}
+
 	for(int y = 0;y < sGrid->nX+1; y++)
 		for(int x = 0;x < sGrid->nY; x++){
 			if(maxVel < fabs(sGrid->v(y,x)))
@@ -208,6 +210,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Build the linear system for pressure
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
+	#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
 			int index = i + sGrid->nX*j;

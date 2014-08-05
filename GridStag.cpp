@@ -1,9 +1,9 @@
 #include "GridStag.h"
 extern double zoomFactor;
-
+extern int grid_size ;
 void GridStag :: initGridStag()
 {
-	nX = nY = GRID_SIZE;
+	nX = nY = grid_size;//GRID_SIZE;
 	//nY = 8;
 	dx = (double)zoomFactor/nX;
 	dy = 1;//(double)gridSizeHL/nY;

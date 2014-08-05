@@ -1,6 +1,7 @@
 #define PARTICLE_PER_CELL 4
-#define GRID_SIZE 512
-#define NO_OF_ITERATIONS 15
+
+#define GRID_SIZE 1024
+#define NO_OF_ITERATIONS 20
 #define NTHREADS 4
 
 /*
