@@ -111,13 +111,14 @@ void  FluidSim :: simulate(double timestep)
 double FluidSim ::  cfl() //keep
 {
 	double maxVel = 0.0;
-	//#pragma omp parallel for 
+	#pragma omp parallel for reduction (max : maxVel)
 	for(int y = 0;y < sGrid->nX; y++)
 		for(int x = 0;x < sGrid->nY+1; x++){
 			if(maxVel < fabs(sGrid->u(y,x)))
 				maxVel = fabs(sGrid->u(y,x));
 		}
-
+	
+	#pragma omp parallel for reduction (max : maxVel)
 	for(int y = 0;y < sGrid->nX+1; y++)
 		for(int x = 0;x < sGrid->nY; x++){
 			if(maxVel < fabs(sGrid->v(y,x)))
@@ -263,7 +264,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
 	int iterations;
-	bool success = true;//solver.solve(matrix1, rhs, pressure, tolerance, iterations);
+	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}

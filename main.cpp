@@ -72,7 +72,10 @@ int main(int argc, char** argv)
 {
 	grid_size = GRID_SIZE;
 	nthreads = NTHREADS;	
-	
+	if(argc>=2){
+	nthreads = atoi(argv[1]);
+	grid_size = atoi(argv[2]);
+	}
    omp_set_num_threads(NTHREADS);
    
    /*#pragma omp parallel
