@@ -46,8 +46,7 @@ void  FluidSim :: simulate(double timestep)
 		double markFluidCellsTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 
 
-		matrix<double > u = sGrid->u;
-		matrix<double > v = sGrid->v;
+		
 		//advect velocity
 		gettimeofday(&tt1, NULL);
 		calculateLevelSetDistance();
@@ -55,8 +54,10 @@ void  FluidSim :: simulate(double timestep)
 		double calculateLevelSetDistanceTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 
 		gettimeofday(&tt1, NULL);
-		sGrid->u = advect2DSelf(sGrid->u,dt,u,v,1);
-		sGrid->v = advect2DSelf(sGrid->v,dt,u,v,2);
+		matrix<double > u = sGrid->u;
+		matrix<double > v = sGrid->v;
+		advect2DSelf(sGrid->u,dt,u,v,1);
+		advect2DSelf(sGrid->v,dt,u,v,2);
 		gettimeofday(&tt2, NULL);
 		double advect2DSelfTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 
@@ -67,7 +68,7 @@ void  FluidSim :: simulate(double timestep)
 
 		//add Gravity
 		gettimeofday(&tt1, NULL);
-		sGrid->v = addGravity(sGrid->v,dt);
+		addGravity(sGrid->v,dt);
 		gettimeofday(&tt2, NULL);
 		double addGravityTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 		applyBoundaryConditions(VELOCITY_BC2);
@@ -143,11 +144,11 @@ void FluidSim :: advectParticles(std::vector <Particles*> & plist, matrix<double
 	}
 	
 }
-matrix<double> FluidSim :: advect2DSelf(matrix<double> q, double dt, matrix<double> &u, matrix<double> &v,int component)//keep
+void FluidSim :: advect2DSelf(matrix<double>& q, double dt, matrix<double> &u, matrix<double> &v,int component)//keep
 {
 	//proper advection - RK2
-	matrix<double> temp=q;
-	temp.clear();
+//	matrix<double>& temp=q;
+	//q.clear();
 	int nX = this->sGrid->nX;
 	int nY = this->sGrid->nY;
 	double dx = sGrid->dx;
@@ -162,7 +163,7 @@ matrix<double> FluidSim :: advect2DSelf(matrix<double> q, double dt, matrix<doub
 				posx = x/dx;
 				posy = y/dx;
 				RK2(posx,posy, u, v,-dt);
-				temp(i,j) = getVelInterpolated(posx,posy-0.5, u);
+				q(i,j) = getVelInterpolated(posx,posy-0.5, u);
 				
 			}
 		}	
@@ -177,13 +178,13 @@ matrix<double> FluidSim :: advect2DSelf(matrix<double> q, double dt, matrix<doub
 				posx = x/dx;
 				posy = y/dx;
 				RK2(posx,posy, u, v,-dt);
-				temp(i,j) = getVelInterpolated(posx-0.5,posy, v);
+				q(i,j) = getVelInterpolated(posx-0.5,posy, v);
 			}
 	}
-	return temp;
+	
 }
 
-matrix<double> FluidSim :: addGravity(matrix<double> &ua, double dt) //keep
+void FluidSim :: addGravity(matrix<double> &ua, double dt) //keep
 {
 	/* here we are not adding gravity factor to top line of grid i.e.(nY,0-nX) */
 //	matrix<double> ub = ua;
@@ -195,8 +196,8 @@ matrix<double> FluidSim :: addGravity(matrix<double> &ua, double dt) //keep
 				ua(y,x) += dt*GRAVITY;
 			}
 		}
-	setValidVelocity(0);
-	return ua;
+	//setValidVelocity(0);
+	
 }
 
 //-----PRESSURE SOLVER----
@@ -264,7 +265,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
 	int iterations;
-	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
+	bool success = true;//solver.solve(matrix1, rhs, pressure, tolerance, iterations);
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
@@ -301,51 +302,62 @@ void FluidSim :: extrapolate2D(matrix<double> &grid, matrix<int> &valid) //keep
 {
 	matrix<int> old_valid ;//= valid;
 	matrix<double> temp_grid;
-	//old_valid.resize(valid.size1(),valid.size2());
-	//temp_grid.resize(grid.size1(),grid.size2());
+	old_valid.resize(valid.size1(),valid.size2());
+	temp_grid.resize(grid.size1(),grid.size2());
+
+
 	
+
+
 	for(int layers = 0; layers < 2; ++layers) {
 		//copyMat(old_valid, valid);
-		 old_valid = valid;
+		 old_valid = valid; //trying to parallelize... increasung time
 		//copyMat(temp_grid, grid);
 		temp_grid = grid; //ZPARA
-
-		int nj = grid.size2()-1;
-		int ni = grid.size1()-1;
-		#pragma omp parallel for
-		for( int j = 1; j <  (int)grid.size2()-1; ++j)
-			for( int i = 1; i < (int)grid.size1()-1; ++i) {
+		int nj = temp_grid.size2()-1;
+		int ni = temp_grid.size1()-1;
+/*		#pragma omp paralle for
+		for( int j = 0; j <  nj; ++j)
+			for( int i = 0; i < ni; ++i) {
+				old_valid(i,j) = valid(i,j);		
+				temp_grid(i,j) = grid(i,j);
+		}
+*/
+		
+		#pragma omp parallel for 
+		for( int j = 1; j <  nj; ++j)
+			for( int i = 1; i < ni; ++i) {
 				float sum = 0;
 				int count = 0;
 
 				if(!old_valid(i,j)) {
 
 					if((i+1)<=ni && old_valid(i+1,j)) {
-						sum += grid(i+1,j);\
+						sum += temp_grid(i+1,j);\
 						++count;
 					}
 					if((i-1)>=0 && old_valid(i-1,j)) {
-						sum += grid(i-1,j);\
+						sum += temp_grid(i-1,j);\
 						++count;
 					}
 					if((j+1)<=nj && old_valid(i,j+1)) {
-						sum += grid(i,j+1);\
+						sum += temp_grid(i,j+1);\
 						++count;
 					}
 					if((j-1)>=0 && old_valid(i,j-1)) {
-						sum += grid(i,j-1);\
+						sum += temp_grid(i,j-1);\
 						++count;
 					}
 					//If any of neighbour cells were valid,
 					//assign the cell their average value and tag it as valid
 					if(count > 0) {
-						temp_grid(i,j) = sum /(float)count;
+						grid(i,j) = sum /(float)count;
 						valid(i,j) = 1;
 					}
 				}
 			}
 		//copyMat(grid, temp_grid);
-		grid = temp_grid; //update with the new changes
+		//grid = temp_grid; //update with the new changes
 	}
 }
 
@@ -427,7 +439,8 @@ void  FluidSim :: setValidVelocity(int val) //keep
 			uValid(y,x) = 0;
 			vValid(y,x) = 0;
 		}	
-	
+
+	if(val){
 	#pragma omp parallel for
 	for(int y=1; y < sGrid->nY-1;y++)
 		for(int x=1; x < sGrid->nX-1;x++){
@@ -438,6 +451,7 @@ void  FluidSim :: setValidVelocity(int val) //keep
 				vValid(y+1,x)=val ;
 			}
 		}
+	}
 }
 
 void FluidSim :: applyBoundaryConditions(int bc)//boundary Condition //keep-BC2
@@ -650,18 +664,22 @@ void FluidSim :: initFluidBody(int FluidPos)
 void FluidSim :: initSolidBoundary(int choice)//remove this choice factor..
 {
 	//bottom boundary..
+	#pragma omp parallel for
 	for(int x = 0; x < sGrid->nX; x++){
 		sGrid->cellType(0,x) = SOLID;
 	}
 	//Top boundary..
+	#pragma omp parallel for
 	for(int x = 0; x < sGrid->nX; x++){
 		sGrid->cellType(sGrid->nY-1,x) = SOLID;
 	}
 	//Left boundary..
+	#pragma omp parallel for
 	for(int y = 0; y < sGrid->nY; y++){
 		sGrid->cellType(y,0) = SOLID;
 	}
 	//Right boundary..
+	#pragma omp parallel for
 	for(int y = 0; y < sGrid->nX; y++){
 		sGrid->cellType(y,sGrid->nX-1) = SOLID;
 	}
@@ -672,20 +690,15 @@ void FluidSim :: markFluidCells() //keep
 {
 	double dx = sGrid->dx;
 
-	sGrid->cellType.clear();
-	//sGrid->isFluidBoundary.clear();
-	#pragma omp parallel for
-	for (unsigned int i = 0; i < sGrid->fluidParticles.size(); i++) {
-		int x = int(sGrid->fluidParticles.at(i)->x / dx);
-		int y = int(sGrid->fluidParticles.at(i)->y / dx);
-		sGrid->cellType(y, x) = FLUID; // means fluid cells
-	}
-
+	//sGrid->cellType.clear();
+	  //sGrid->isFluidBoundary.clear();
+	
 	int eightNeighborCount = 0;
 	int fourNeighborCount = 0;
 	#pragma omp parallel for
 	for (int y = 1; y < sGrid->nY - 1; y++)
 		for (int x = 1; x < sGrid->nX - 1; x++) {
+			sGrid->cellType(y,x) = AIR;
 			sGrid->isFluidBoundary(y, x) = 0;
 			if(sGrid->cellType(y,x) == FLUID){
 				eightNeighborCount =
@@ -709,6 +722,15 @@ void FluidSim :: markFluidCells() //keep
 					sGrid->isFluidBoundary(y, x) = 1;
 			}
 		}
+
+	#pragma omp parallel for
+	for (unsigned int i = 0; i < sGrid->fluidParticles.size(); i++) {
+		int x = int(sGrid->fluidParticles.at(i)->x / dx);
+		int y = int(sGrid->fluidParticles.at(i)->y / dx);
+		sGrid->cellType(y, x) = FLUID; // means fluid cells
+	}
+
+
 	initSolidBoundary(1);
 }
 
