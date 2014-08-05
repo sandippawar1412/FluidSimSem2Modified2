@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 	nthreads = atoi(argv[1]);
 	grid_size = atoi(argv[2]);
 	}
- omp_set_num_threads(NTHREADS);
+ 	omp_set_num_threads(nthreads);
 	struct timeval tt1, tt2;
 	init();
 	int i=pthread_getconcurrency();
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 	nthreads = atoi(argv[1]);
 	grid_size = atoi(argv[2]);
 	}
-   omp_set_num_threads(NTHREADS);
+   	omp_set_num_threads(nthreads);
    
    /*#pragma omp parallel
    {
