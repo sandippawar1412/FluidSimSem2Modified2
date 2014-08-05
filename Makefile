@@ -10,7 +10,7 @@ CFLAGS = -Wall
 
 .PHONY:clean
 
-OBJ = main.o GridStag.o Renderer.o FluidSim.o Printer.o Particles.o
+OBJ = main.o GridStag.o Renderer.o FluidSim.o Printer.o Particles.o helper.o
 LIBS = $(GL_LIBS)
 
 all: $(OBJ) liquid2D
@@ -28,7 +28,7 @@ clean:
 #DEPENDENCIES- DO NOT DELETE
 GridStag.o : GridStag.h ParameterFLAGS.hpp
 Renderer.o : Renderer.h
-FluidSim.o : FluidSim.h ./pcgsolver/*.h ParameterFLAGS.hpp
+FluidSim.o : FluidSim.h ./pcgsolver/*.h ParameterFLAGS.hpp helper.h
 main.o : main.h commonData.h ParameterFLAGS.hpp
 Printer.o : Printer.h
 Particles.o : Particles.h

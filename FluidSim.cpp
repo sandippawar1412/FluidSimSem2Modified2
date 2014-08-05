@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include "pcgsolver/util.h"
 #include <cassert>
+#include "helper.h"
 
 using namespace std;
 
@@ -110,7 +111,7 @@ void  FluidSim :: simulate(double timestep)
 double FluidSim ::  cfl() //keep
 {
 	double maxVel = 0.0;
-//	#pragma omp parallel for
+	//#pragma omp parallel for 
 	for(int y = 0;y < sGrid->nX; y++)
 		for(int x = 0;x < sGrid->nY+1; x++){
 			if(maxVel < fabs(sGrid->u(y,x)))
@@ -206,7 +207,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 		pressure.resize(sys_size);
 		matrix1.resize(sys_size);
 	}
-	matrix1.zero();
+	matrix1.zero(); //init matrix .. sparsematrix
 	//Build the linear system for pressure
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
@@ -267,6 +268,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
 	else{
+		#pragma omp parallel for
 		for(int j = 1; j < sGrid->nY-1; ++j) {
 			for(int i = 1; i < sGrid->nX-1; ++i) {
 				int index = i + sGrid->nX*j;
@@ -274,6 +276,8 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 			}
 		}
 		double scale = dt / (1 * sGrid->dx); // book define rho value before use
+		
+		#pragma omp parallel for
 		for(int y=1; y < sGrid->nY-1;y++)
 			for(int x=1; x < sGrid->nX-1;x++){
 				if(sGrid->cellType(y,x) == FLUID && sGrid->cellType(y,x-1) == AIR){
@@ -296,11 +300,18 @@ void FluidSim :: extrapolate2D(matrix<double> &grid, matrix<int> &valid) //keep
 {
 	matrix<int> old_valid ;//= valid;
 	matrix<double> temp_grid;
+	//old_valid.resize(valid.size1(),valid.size2());
+	//temp_grid.resize(grid.size1(),grid.size2());
+	
 	for(int layers = 0; layers < 2; ++layers) {
-		old_valid = valid;
-		temp_grid = grid;
+		//copyMat(old_valid, valid);
+		 old_valid = valid;
+		//copyMat(temp_grid, grid);
+		temp_grid = grid; //ZPARA
+
 		int nj = grid.size2()-1;
 		int ni = grid.size1()-1;
+		#pragma omp parallel for
 		for( int j = 1; j <  (int)grid.size2()-1; ++j)
 			for( int i = 1; i < (int)grid.size1()-1; ++i) {
 				float sum = 0;
@@ -332,11 +343,13 @@ void FluidSim :: extrapolate2D(matrix<double> &grid, matrix<int> &valid) //keep
 					}
 				}
 			}
+		//copyMat(grid, temp_grid);
 		grid = temp_grid; //update with the new changes
 	}
 }
 
 void FluidSim :: calculateLevelSetDistance(){//keep
+	#pragma omp parallel for
 	for(int y = 0;y < sGrid->nX; y++)
 		for(int x = 0;x < sGrid->nY; x++){
 			if(sGrid->cellType(y, x) == FLUID){
@@ -429,21 +442,24 @@ void  FluidSim :: setValidVelocity(int val) //keep
 void FluidSim :: applyBoundaryConditions(int bc)//boundary Condition //keep-BC2
 {
 	//bottom boundary
+	#pragma omp parallel for
 	for(int x = 0; x < sGrid->nX; x++){
 		sGrid->v(0,x) =  0;//-sGrid->v(2,x);
 		sGrid->v(1,x) = 0;//sGrid->v(2,x);
 	}
 	//Top boundary..
+	#pragma omp parallel for
 	for(int x = 0; x < sGrid->nX; x++){  //allowing in x direction
 		sGrid->v(sGrid->nY-1,x) = 0;//sGrid->v(sGrid->nY-2,x);
 		sGrid->v(sGrid->nY,x) = 0;//-sGrid->v(sGrid->nY-2,x);
 	}
-
+	#pragma omp parallel for
 	for(int y = 0; y < sGrid->nY; y++){
 		sGrid->u(y,0) = 0;//-sGrid->u(y,2);
 		sGrid->u(y,1) = 0;//sGrid->u(y,2);
 	}
 	//Right boundary..
+	#pragma omp parallel for
 	for(int y = 0; y < sGrid->nY; y++){
 		sGrid->u(y,sGrid->nX-1) = 0;//-sGrid->u(y,sGrid->nX-2);
 		sGrid->u(y,sGrid->nX) = 0;//sGrid->u(y,sGrid->nX-2);
@@ -490,6 +506,7 @@ matrix<double> FluidSim :: addForce(matrix<double> dest, double dt, matrix<doubl
 	for(int i=1;i < sGrid->nY-1;i++) //exclude the boundary cells
 		for(int j=1;j<sGrid->nX-1;j++)
 			dest( i, j ) = dest( i, j ) + dt* src(i,j);
+	
 	return dest;
 }
 
@@ -520,6 +537,7 @@ void FluidSim :: initFluidBody(int FluidPos)
 		fluidPosBY = 1 ;//sb+1;
 		fluidPosTX = nX-1;
 		fluidPosTY = ((nY-1) - (nY-1)/3) ;
+	
 		for (int i = 0; i < (nX)*(nY)*PARTICLE_PER_CELL; ++i) {
 			float xpos = randhashf(i * 2, 0.0, zoomFactor);
 			float ypos = randhashf(i * 2 + 1,0.0, zoomFactor);
@@ -533,6 +551,7 @@ void FluidSim :: initFluidBody(int FluidPos)
 					cout << "Error...Not Pushed back Particle";
 			}
 		}
+	
 		break;
 	case 2: //dam_break- middle-middle
 		fluidPosBY = 0+3*(nX)/10;  //last one is boundary
@@ -654,6 +673,7 @@ void FluidSim :: markFluidCells() //keep
 
 	sGrid->cellType.clear();
 	//sGrid->isFluidBoundary.clear();
+	#pragma omp parallel for
 	for (unsigned int i = 0; i < sGrid->fluidParticles.size(); i++) {
 		int x = int(sGrid->fluidParticles.at(i)->x / dx);
 		int y = int(sGrid->fluidParticles.at(i)->y / dx);
@@ -662,6 +682,7 @@ void FluidSim :: markFluidCells() //keep
 
 	int eightNeighborCount = 0;
 	int fourNeighborCount = 0;
+	#pragma omp parallel for
 	for (int y = 1; y < sGrid->nY - 1; y++)
 		for (int x = 1; x < sGrid->nX - 1; x++) {
 			sGrid->isFluidBoundary(y, x) = 0;
