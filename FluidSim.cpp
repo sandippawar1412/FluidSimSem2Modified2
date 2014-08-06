@@ -49,7 +49,7 @@ void  FluidSim :: simulate(double timestep)
 		
 		//advect velocity
 		gettimeofday(&tt1, NULL);
-		calculateLevelSetDistance();
+		//calculateLevelSetDistance();
 		gettimeofday(&tt2, NULL);
 		double calculateLevelSetDistanceTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 
@@ -89,7 +89,7 @@ void  FluidSim :: simulate(double timestep)
 		setValidVelocity(1);
 		extrapolate2D(sGrid->u,uValid);
 		extrapolate2D(sGrid->v,vValid);
-		setValidVelocity(0);
+	//	setValidVelocity(0);
 		gettimeofday(&tt2, NULL);
 		double extrapolate2DTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 		applyBoundaryConditions(VELOCITY_BC2);
@@ -265,7 +265,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
 	int iterations;
-	bool success = true;//solver.solve(matrix1, rhs, pressure, tolerance, iterations);
+	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
@@ -362,7 +362,7 @@ void FluidSim :: extrapolate2D(matrix<double> &grid, matrix<int> &valid) //keep
 }
 
 void FluidSim :: calculateLevelSetDistance(){//keep
-	#pragma omp parallel for
+#pragma omp parallel for
 	for(int y = 0;y < sGrid->nX; y++)
 		for(int x = 0;x < sGrid->nY; x++){
 			if(sGrid->cellType(y, x) == FLUID){
@@ -373,7 +373,7 @@ void FluidSim :: calculateLevelSetDistance(){//keep
 		}
 
 	for(int l=0; l<2;l++){
-
+#pragma omp parallel for
 		for(int y = 1;y < sGrid->nX; y++)
 			for(int x = 1;x < sGrid->nY; x++){
 				if(sGrid->cellType(y, x) != FLUID){
@@ -384,6 +384,7 @@ void FluidSim :: calculateLevelSetDistance(){//keep
 					);
 				}
 			}
+#pragma omp parallel for
 		for(int y = sGrid->nX-2;y >=0; y--)
 			for(int x = 1;x < sGrid->nY; x++){
 				if(sGrid->cellType(y, x) !=FLUID){
@@ -394,6 +395,7 @@ void FluidSim :: calculateLevelSetDistance(){//keep
 					);
 				}
 			}
+#pragma omp parallel for
 		for(int y = 1;y < sGrid->nX; y++)
 			for(int x = sGrid->nY-2;x>=0; x--){
 				if(sGrid->cellType(y, x) !=FLUID){
@@ -404,6 +406,7 @@ void FluidSim :: calculateLevelSetDistance(){//keep
 					);
 				}
 			}
+#pragma omp parallel for
 		for(int y = sGrid->nX-2;y >=0; y--)
 			for(int x = sGrid->nY-2;x>=0; x--){
 				if(sGrid->cellType(y, x) !=FLUID){

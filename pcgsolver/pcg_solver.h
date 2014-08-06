@@ -93,6 +93,7 @@ void factor_modified_incomplete_cholesky0(const SparseMatrix<T> &matrix, SparseC
    factor.value.resize(0);
    factor.rowindex.resize(0);
    zero(factor.adiag);
+	
    for(unsigned int i=0; i<matrix.n; ++i){
       factor.colstart[i]=(unsigned int)factor.rowindex.size();
       for(unsigned int j=0; j<matrix.index[i].size(); ++j){
@@ -196,6 +197,7 @@ void solve_lower(const SparseColumnLowerFactor<T> &factor, const std::vector<T> 
    assert(factor.n==rhs.size());
    assert(factor.n==result.size());
    result=rhs;
+  // #pragma omp parallel for	
    for(unsigned int i=0; i<factor.n; ++i){
       result[i]*=factor.invdiag[i];
       for(unsigned int j=factor.colstart[i]; j<factor.colstart[i+1]; ++j){
@@ -213,6 +215,7 @@ void solve_lower_transpose_in_place(const SparseColumnLowerFactor<T> &factor, st
    unsigned int i=factor.n;
    do{
       --i;
+ #pragma omp parallel for	
       for(unsigned int j=factor.colstart[i]; j<factor.colstart[i+1]; ++j){
          x[i]-=factor.value[j]*x[factor.rowindex[j]];
       }
