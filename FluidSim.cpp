@@ -79,6 +79,7 @@ void  FluidSim :: simulate(double timestep)
 
 		//apply Pressure
 		gettimeofday(&tt1, NULL);
+
 		solvePressureEigen((float)dt);
 //		solvePressureBridson((float)dt);
 //		solvePressureViennacl((float)dt);
@@ -209,100 +210,79 @@ void FluidSim::solvePressureEigen(float dt) { //keep
 	Eigen :: VectorXd pressure(sys_size), rhs(sys_size);
 	Eigen :: SparseMatrix<double> A(sys_size,sys_size);
 	
-typedef Eigen::Triplet<double> T;
-std::vector<T> coeff; 
-
-// coeffs.push_back(T(id,id1,w))
-// A.setFromTriplets(coefficients.begin(), coefficients.end());
-  
-// fill A and b
-std::cout<<"once\n";
+	typedef Eigen::Triplet<double> T;
+	std::vector<T> coeff; 
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
-	//#pragma omp parallel for	
+//	#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
 			int index = i + sGrid->nX*j;
 			rhs[index] = 0;
 			pressure[index] = 0;
-/*
+
 			if(cellType(j,i)==FLUID)
 			{
 				if(cellType(j,i+1)==FLUID) {
 					coeff.push_back(T(index,index,scale))	;
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index+1,-scale))	;					
-					//A.coeffRef(index,index+1) += -scale;
 			}
 				else if(cellType(j,i+1)==AIR) {
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index,scale))	;	
 				}
 				//left neighbour
 				if(cellType(j,i-1)==FLUID) {
 					coeff.push_back(T(index,index,scale))	;
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index-1,-scale))	;					
-					//A.coeffRef(index,index-1) += -scale;
 			}
 				else if(cellType(j,i-1)==AIR) {
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index,scale))	;
 				}
 
 				//top neighbour
 				if(cellType(j+1,i)==FLUID) {
 					coeff.push_back(T(index,index,scale))	;
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index+sGrid->nX,-scale))	;					
-					//A.coeffRef(index,index+sGrid->nX) += -scale;
 			}
 				else  if(cellType(j+1,i)==AIR)
 				{
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index,scale))	;
 				}
 
 				//bottom neighbour
 				if(cellType(j-1,i)==FLUID) {
 					coeff.push_back(T(index,index,scale))	;
-					//A.coeffRef(index,index) += scale;
 					coeff.push_back(T(index,index-sGrid->nX,-scale))	;					
-					//A.coeffRef(index,index-sGrid->nX) += -scale;
 				}
 				else if(cellType(j-1,i)==AIR) {
-					//	A.coeffRef(index,index) += scale;
-coeff.push_back(T(index,index,scale))	;
+	
+					coeff.push_back(T(index,index,scale))	;
 
 				}
 
 				rhs[index]  = -((
 						(sGrid->u(j,i+1) - sGrid->u(j,i) + sGrid->v(j+1,i) - sGrid->v(j,i))/(double)sGrid->dx ) );;// /(float)sGrid->dx;
-			}*/
+			}
 		}
 	}
 
 
-std::cout<<"end1\n";
-				A.setFromTriplets(coeff.begin(), coeff.end());
+	A.setFromTriplets(coeff.begin(), coeff.end());
+	Eigen :: ConjugateGradient<Eigen :: SparseMatrix<double> > cg;
+	cg.compute(A);
+ 	pressure = cg.solve(rhs);
+ 	//std::cout << "#iterations:     " << cg.iterations() << std::endl;
+ 	//std::cout << "estimated error: " << cg.error()      << std::endl;
 
- Eigen :: ConjugateGradient<Eigen :: SparseMatrix<double> > cg;
- cg.compute(A);
- pressure = cg.solve(rhs);
- std::cout << "#iterations:     " << cg.iterations() << std::endl;
- std::cout << "estimated error: " << cg.error()      << std::endl;
-
-std::cout<<"end2\n";
-//	#pragma omp parallel for
-		for(int j = 1; j < sGrid->nY-1; ++j) {
-			for(int i = 1; i < sGrid->nX-1; ++i) {
-				int index = i + sGrid->nX*j;
-				sGrid->p(j,i) = pressure[index];
-			}
-		}{
+	#pragma omp parallel for
+	for(int j = 1; j < sGrid->nY-1; ++j) {
+		for(int i = 1; i < sGrid->nX-1; ++i) {
+			int index = i + sGrid->nX*j;
+			sGrid->p(j,i) = pressure[index];
+		}
+	}{
 		double scale = dt / (1 * sGrid->dx); // book define rho value before use
-
-//		#pragma omp parallel for
+		#pragma omp parallel for
 		for(int y=1; y < sGrid->nY-1;y++)
 			for(int x=1; x < sGrid->nX-1;x++){
 				if(sGrid->cellType(y,x) == FLUID && sGrid->cellType(y,x-1) == AIR){
@@ -319,11 +299,9 @@ std::cout<<"end2\n";
 				}
 			}
 	}
-std::cout<<"end3\n";
-
 }
 
-void FluidSim::solvePressureViennacl(float dt) { //keep
+//void FluidSim::solvePressureViennacl(float dt) { //keep
 
 	//typedef float ScalarType;
 //typedef double    ScalarType; //use this if your GPU supports double precision
@@ -498,7 +476,7 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 // viennacl::linalg::bicgstab_tag and viennacl::linalg::gmres_tag 
 // instead of viennacl::linalg::cg_tag in the calls above.  
 
-}
+//}
 
 
 //---PRESSURE-SOLVER..BRIDSON

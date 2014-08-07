@@ -5,6 +5,7 @@
 #include <omp.h>
 #include <sys/time.h>
 
+
 //#include "viennacl/vector.hpp"
 
 #define WG  //WG - With Graphics

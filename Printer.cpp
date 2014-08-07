@@ -9,7 +9,7 @@ void Printer :: init(GridStag* sGrid)
 void Printer :: matrices(matrix<double> mat)
 {
 	std::cout<<std::endl;	
-	for( int i = (int)(mat.size1()-1);i >= 0; i--,std::cout<<std::endl) //value returned by size1 & size2 is of type unsigned int..
+	for( int i = (int)(mat.size1()-1);i >= 0; i--,std::cout<<std::endl) //value returned by size1 & size2 is of type unsignedint..
 		for( int j=0;j < (int)mat.size2();j++,std::cout<<" ")
 			/*if(mat(i,j)>0 && mat(i,j)<1)
 				cout<<"9";	

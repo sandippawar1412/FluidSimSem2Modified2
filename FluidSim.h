@@ -65,7 +65,7 @@ public:
 
 	void solvePressureBridson(float dt);
 	void solvePressureEigen(float dt);
-	void solvePressureViennacl(float dt);	//Solver data
+//	void solvePressureViennacl(float dt);	//Solver data
 
 	PCGSolver<double> solver;
 	SparseMatrixd matrix1;
