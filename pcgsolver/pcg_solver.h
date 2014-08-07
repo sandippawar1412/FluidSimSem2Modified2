@@ -132,10 +132,12 @@ void factor_modified_incomplete_cholesky0(const SparseMatrix<T> &matrix, SparseC
       else
          factor.invdiag[k]=1/sqrt(factor.invdiag[k]);
       // finalize the k'th column L(:,k)
-      for(unsigned int p=factor.colstart[k]; p<factor.colstart[k+1]; ++p){
+//#pragma omp parallel for    
+  for(unsigned int p=factor.colstart[k]; p<factor.colstart[k+1]; ++p){
          factor.value[p]*=factor.invdiag[k];
       }
       // incompletely eliminate L(:,k) from future columns, modifying diagonals
+//#pragma omp parallel for    
       for(unsigned int p=factor.colstart[k]; p<factor.colstart[k+1]; ++p){
          unsigned int j=factor.rowindex[p]; // work on column j
          T multiplier=factor.value[p];
@@ -200,7 +202,8 @@ void solve_lower(const SparseColumnLowerFactor<T> &factor, const std::vector<T> 
   // #pragma omp parallel for	
    for(unsigned int i=0; i<factor.n; ++i){
       result[i]*=factor.invdiag[i];
-      for(unsigned int j=factor.colstart[i]; j<factor.colstart[i+1]; ++j){
+//#pragma omp parallel for      
+    for(unsigned int j=factor.colstart[i]; j<factor.colstart[i+1]; ++j){
          result[factor.rowindex[j]]-=factor.value[j]*result[i];
       }
    }
@@ -215,7 +218,7 @@ void solve_lower_transpose_in_place(const SparseColumnLowerFactor<T> &factor, st
    unsigned int i=factor.n;
    do{
       --i;
- #pragma omp parallel for	
+// #pragma omp parallel for	
       for(unsigned int j=factor.colstart[i]; j<factor.colstart[i+1]; ++j){
          x[i]-=factor.value[j]*x[factor.rowindex[j]];
       }

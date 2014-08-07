@@ -6,6 +6,7 @@ GL_LIB_DIR=/usr/lib
 GL_LIBS=-L$(GL_LIB_DIR) -lglut -lGLU -lGL -lm -lpthread
 
 CFLAGS = -Wall 
+OPTFLAG = -O3
 # -dNDEBUG
 
 .PHONY:clean
@@ -16,11 +17,11 @@ LIBS = $(GL_LIBS)
 all: $(OBJ) liquid2D
 
 $(OBJ): %.o : %.cpp
-	$(CC) -c $(CFLAGS)  $< -o $@ -fopenmp
+	$(CC) -c $(CFLAGS) $(OPTFLAG) $< -o $@ -fopenmp
 
 #-Wno-write-strings : to ignore warning related to deprecated conversion from const char* to char*
 liquid2D: $(OBJ) 
-	$(CC) $(CFLAGS) $(OBJ) $(LIBS) -o $@ -fopenmp
+	$(CC) $(CFLAGS) $(OBJ) $(LIBS) $(OPTFLAG) -o $@ -fopenmp
 
 clean:
 	rm -f  ./*~ ./core $(OBJ) liquid2D

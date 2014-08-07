@@ -49,7 +49,7 @@ void  FluidSim :: simulate(double timestep)
 		
 		//advect velocity
 		gettimeofday(&tt1, NULL);
-		//calculateLevelSetDistance();
+		calculateLevelSetDistance();
 		gettimeofday(&tt2, NULL);
 		double calculateLevelSetDistanceTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 
@@ -79,6 +79,7 @@ void  FluidSim :: simulate(double timestep)
 
 		//apply Pressure
 		gettimeofday(&tt1, NULL);
+		//solvePressureEigen((float)dt);
 		solvePressureBridson((float)dt);
 		gettimeofday(&tt2, NULL);
 		double solvePressureBridsonTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
@@ -200,9 +201,111 @@ void FluidSim :: addGravity(matrix<double> &ua, double dt) //keep
 	
 }
 
-//-----PRESSURE SOLVER----
-void FluidSim::solvePressureBridson(float dt) { //keep
+//-----PRESSURE SOLVER----EIGEN
+/*
+void FluidSim::solvePressureEigen(float dt) { //keep
+	unsigned int sys_size = sGrid->nX*sGrid->nY;
+	Eigen :: VectorXd pressure(sys_size), rhs(sys_size);
+	Eigen :: SparseMatrix<double> A(sys_size,sys_size);
+	// fill A and b
 
+	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
+	matrix<double>& cellType = sGrid->cellType;
+	//#pragma omp parallel for	
+	for(int j = 1; j < sGrid->nY-1; ++j) {
+		for(int i = 1; i <  sGrid->nX-1; ++i) {
+			int index = i + sGrid->nX*j;
+			rhs[index] = 0;
+			pressure[index] = 0;
+
+			if(cellType(j,i)==FLUID)
+			{
+				if(cellType(j,i+1)==FLUID) {
+					A.coeffRef(index,index) += scale;
+					A.coeffRef(index,index+1) += -scale;
+			}
+				else if(cellType(j,i+1)==AIR) {
+					A.coeffRef(index,index) += scale;
+				}
+				//left neighbour
+				if(cellType(j,i-1)==FLUID) {
+					A.coeffRef(index,index) += scale;
+					A.coeffRef(index,index-1) += -scale;
+			}
+				else if(cellType(j,i-1)==AIR) {
+					A.coeffRef(index,index) += scale;
+				}
+
+				//top neighbour
+				if(cellType(j+1,i)==FLUID) {
+					A.coeffRef(index,index) += scale;
+					A.coeffRef(index,index+ sGrid->nX) += -scale;	
+			}
+				else  if(cellType(j+1,i)==AIR)
+				{
+A.coeffRef(index,index) += scale;
+				}
+
+				//bottom neighbour
+				if(cellType(j-1,i)==FLUID) {
+A.coeffRef(index,index) += scale;
+					A.coeffRef(index,index - sGrid->nX) += -scale;	
+				}
+				else if(cellType(j-1,i)==AIR) {
+	A.coeffRef(index,index) += scale;
+
+				}
+
+				rhs[index]  = -((
+						(sGrid->u(j,i+1) - sGrid->u(j,i) + sGrid->v(j+1,i) - sGrid->v(j,i))/(double)sGrid->dx ) );;// /(float)sGrid->dx;
+			}
+		}
+	}
+
+
+
+
+ Eigen :: ConjugateGradient<Eigen :: SparseMatrix<double> > cg;
+ cg.compute(A);
+ pressure = cg.solve(rhs);
+ std::cout << "#iterations:     " << cg.iterations() << std::endl;
+ std::cout << "estimated error: " << cg.error()      << std::endl;
+
+
+//	#pragma omp parallel for
+		for(int j = 1; j < sGrid->nY-1; ++j) {
+			for(int i = 1; i < sGrid->nX-1; ++i) {
+				int index = i + sGrid->nX*j;
+				sGrid->p(j,i) = pressure[index];
+			}
+		}{
+		double scale = dt / (1 * sGrid->dx); // book define rho value before use
+
+//		#pragma omp parallel for
+		for(int y=1; y < sGrid->nY-1;y++)
+			for(int x=1; x < sGrid->nX-1;x++){
+				if(sGrid->cellType(y,x) == FLUID && sGrid->cellType(y,x-1) == AIR){
+					sGrid->u(y,x) -= scale * ((sGrid->p(y,x)) - (sGrid->p(y,x-1)));
+				}
+
+				if(sGrid->cellType(y,x) == FLUID && sGrid->cellType(y-1,x) == AIR){
+					sGrid->v(y,x) -= scale * ((sGrid->p(y,x)) - (sGrid->p(y-1,x)));
+				}
+
+				if(sGrid->cellType(y,x) == FLUID){
+					sGrid->u(y,x+1) -= scale * ((sGrid->p(y,x+1)) - (sGrid->p(y,x)));
+					sGrid->v(y+1,x) -= scale * ((sGrid->p(y+1,x)) - (sGrid->p(y,x)));
+				}
+			}
+	}
+
+}
+*/
+
+
+
+//---PRESSURE-SOLVER..BRIDSON
+void FluidSim::solvePressureBridson(float dt) { //keep
 	unsigned int sys_size = sGrid->nX*sGrid->nY;
 	if(rhs.size() != sys_size) {
 		rhs.resize(sys_size);
@@ -297,6 +400,8 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 			}
 	}
 }
+
+
 //-----Extrapolation........
 void FluidSim :: extrapolate2D(matrix<double> &grid, matrix<int> &valid) //keep
 {

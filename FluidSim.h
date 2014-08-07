@@ -9,6 +9,9 @@
 #include "pcgsolver/sparse_matrix.h"
 #include "pcgsolver/pcg_solver.h"
 
+#include "eigen/Eigen/IterativeLinearSolvers"
+//using namespace Eigen;
+
 #include "ParameterFLAGS.hpp"
 
 #define FLUID 1
@@ -49,6 +52,7 @@ public:
 	double getVelInterpolated(double x,double y, matrix<double> &mat);
 
 	void solvePressureBridson(float dt);
+//	void solvePressureEigen(float dt);
 	//Solver data
 	PCGSolver<double> solver;
 	SparseMatrixd matrix1;
