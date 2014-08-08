@@ -15,7 +15,7 @@
 #include "eigen/Eigen/IterativeLinearSolvers"
 //using namespace Eigen;
 #include <boost/numeric/ublas/matrix.hpp>
-//#include <boost/numeric/ublas/matrix_sparse.hpp>
+#include <boost/numeric/ublas/matrix_sparse.hpp>
 //#include "viennacl/linalg/ilu.hpp"
 
 //#include "viennacl/linalg/direct_solve.hpp"
@@ -65,7 +65,7 @@ public:
 
 	void solvePressureBridson(float dt);
 	void solvePressureEigen(float dt);
-//	void solvePressureViennacl(float dt);	//Solver data
+	void solvePressureViennacl(float dt);	//Solver data
 
 	PCGSolver<double> solver;
 	SparseMatrixd matrix1;

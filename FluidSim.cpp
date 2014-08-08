@@ -80,8 +80,8 @@ void  FluidSim :: simulate(double timestep)
 		//apply Pressure
 		gettimeofday(&tt1, NULL);
 
-		solvePressureEigen((float)dt);
-//		solvePressureBridson((float)dt);
+//		solvePressureEigen((float)dt);
+		solvePressureBridson((float)dt);
 //		solvePressureViennacl((float)dt);
 		gettimeofday(&tt2, NULL);
 		double solvePressureBridsonTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
@@ -301,28 +301,28 @@ void FluidSim::solvePressureEigen(float dt) { //keep
 	}
 }
 
-//void FluidSim::solvePressureViennacl(float dt) { //keep
+void FluidSim::solvePressureViennacl(float dt) { //keep
 
-	//typedef float ScalarType;
+	typedef float ScalarType;
 //typedef double    ScalarType; //use this if your GPU supports double precision
  
 // Set up some ublas objects:
-/*	boost::numeric::ublas::vector<ScalarType> ublas_rhs;
+	boost::numeric::ublas::vector<ScalarType> ublas_rhs;
 
 	boost::numeric::ublas::vector<ScalarType> ublas_result;
 	boost::numeric::ublas::compressed_matrix<ScalarType> ublas_matrix;
 
-*/
+
 // Initialize and fill all objects here 
  
 //SparseMatrixd matrix1;
 //	std::vector<double> rhs;
 //	std::vector<double> pressure;
-/*	unsigned int sys_size = sGrid->nX*sGrid->nY;
+	unsigned int sys_size = sGrid->nX*sGrid->nY;
 	ublas_rhs.resize(sys_size);
 	ublas_result.resize(sys_size);
 	ublas_matrix.resize(sys_size,sys_size,false);
-	
+/*	
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
 	//#pragma omp parallel for	
@@ -476,7 +476,7 @@ void FluidSim::solvePressureEigen(float dt) { //keep
 // viennacl::linalg::bicgstab_tag and viennacl::linalg::gmres_tag 
 // instead of viennacl::linalg::cg_tag in the calls above.  
 
-//}
+}
 
 
 //---PRESSURE-SOLVER..BRIDSON
