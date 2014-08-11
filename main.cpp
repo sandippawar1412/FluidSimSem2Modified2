@@ -10,11 +10,12 @@
 //#include "viennacl/vector.hpp"
 
 #define WG  //WG - With Graphics
-//#undef WG
+#undef WG
 
 int grid_size;
 int nthreads;
 #ifndef WG
+void initMain();	
 int main(int argc, char** argv)
 {
 	grid_size = GRID_SIZE;
@@ -25,7 +26,7 @@ int main(int argc, char** argv)
 	}
  	omp_set_num_threads(nthreads);
 	struct timeval tt1, tt2;
-	init();
+	initMain();
 	int i=pthread_getconcurrency();
 	int it=0;
 	int ni= 0;
@@ -47,7 +48,7 @@ void animate()
 	fluidSim->simulate(timestep);
 } 
 
-void init(void) 
+void initMain(void) 
 {
    sGrid->initGridStag();
    fluidSim->init(sGrid);
@@ -95,7 +96,7 @@ int main(int argc, char** argv)
    */
   
    glutInit(&argc, argv);
-   init ();
+   initMain ();
    int i=pthread_getconcurrency();
 
    char windowName[]="   Liquid_Simulator-LevelSet+Surface" ;

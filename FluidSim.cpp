@@ -11,6 +11,8 @@
 #include "pcgsolver/util.h"
 #include <cassert>
 #include "helper.h"
+#include  "Printer.h"
+#define VIENNACL_HAVE_UBLAS 1
 
 using namespace std;
 
@@ -81,8 +83,8 @@ void  FluidSim :: simulate(double timestep)
 		gettimeofday(&tt1, NULL);
 
 //		solvePressureEigen((float)dt);
-		solvePressureBridson((float)dt);
-//		solvePressureViennacl((float)dt);
+//		solvePressureBridson((float)dt);
+		solvePressureViennacl((float)dt);
 		gettimeofday(&tt2, NULL);
 		double solvePressureBridsonTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 		applyBoundaryConditions(VELOCITY_BC2);
@@ -307,16 +309,23 @@ void FluidSim::solvePressureEigen(float dt) { //keep
 	}
 }
 
+
+
+using namespace boost::numeric;
 void FluidSim::solvePressureViennacl(float dt) { //keep
 
 	typedef float ScalarType;
 //typedef double    ScalarType; //use this if your GPU supports double precision
  
 // Set up some ublas objects:
-	boost::numeric::ublas::vector<ScalarType> ublas_rhs;
+/*	boost::numeric::ublas::vector<ScalarType> ublas_rhs;
 
 	boost::numeric::ublas::vector<ScalarType> ublas_result;
 	boost::numeric::ublas::compressed_matrix<ScalarType> ublas_matrix;
+*/
+  ublas::vector<ScalarType> ublas_rhs;
+  ublas::vector<ScalarType> ublas_result;
+  ublas::compressed_matrix<ScalarType> ublas_matrix;
 
 
 // Initialize and fill all objects here 
@@ -331,6 +340,38 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 	
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
+	
+	 
+	for(int j = 1; j < sGrid->nY-1; ++j) {
+		for(int i = 1; i <  sGrid->nX-1; ++i) {
+	int index = i + sGrid->nX*j;
+			ublas_rhs[index] = 0;
+			ublas_result[index] = 0;
+			ublas_matrix(index, index) = 0;
+		}
+	}
+	
+	/*
+	  if (!viennacl::io::read_matrix_market_file(ublas_matrix, "mat65k.mtx"))
+  {
+    std::cout << "Error reading Matrix file" << std::endl;
+    return ;
+  }
+else{
+    std::cout << "reading Matrix file" << std::endl;
+}
+
+  if (!readVectorFromFile("rhs65025.txt", ublas_rhs))
+  {
+    std::cout << "Error reading RHS file" << std::endl;
+    return ;
+  }
+else
+{
+    std::cout << "reading rhs file" << std::endl;
+}*/
+
+	
 	//#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
@@ -375,23 +416,34 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 					ublas_matrix(index, index)+= scale;
 				}
 
-				rhs[index]  = -((
+				ublas_rhs[index]  = -((
 						(sGrid->u(j,i+1) - sGrid->u(j,i) + sGrid->v(j+1,i) - sGrid->v(j,i))/(double)sGrid->dx ) );;// /(float)sGrid->dx;
 			}
 		}
 	}
 
 
+
 //
 // Compute ILUT preconditioners for CPU and for GPU objects:
 //
+
+viennacl::linalg::ilut_precond<boost::numeric::ublas::compressed_matrix<ScalarType> > ublas_ilut(ublas_matrix, viennacl::linalg::ilut_tag());
+
+/*
 viennacl::linalg::ilut_tag ilut_conf(10, 1e-5);  //10 entries, rel. tol. 1e-5
 typedef viennacl::linalg::ilut_precond< 
                     boost::numeric::ublas::compressed_matrix<ScalarType> >     ublas_ilut_t;
+*/
+  //std::cout << "----- CG Test -----" << std::endl;
 
+  //ublas_result = viennacl::linalg::solve(ublas_matrix, ublas_rhs, viennacl::linalg::cg_tag());
+  ublas_result = viennacl::linalg::solve(ublas_matrix, ublas_rhs, viennacl::linalg::cg_tag(1e-6, 20), ublas_ilut);
+
+//std::cout<<"CGTESTDOne"<<std::endl;;
 
 //preconditioner for ublas objects:
-ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);   
+//ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);   
  
 //	viennacl::linalg::ilut_precond< 
   //                  viennacl::compressed_matrix<ScalarType> >  vcl_ilut_t;
@@ -404,8 +456,8 @@ ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);
 
 //ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
  //                     ublas_rhs,
-  //  	                  viennacl::linalg::cg_tag());
-
+  //	  	                  viennacl::linalg::cg_tag());
+	
 	//vcl_result    = solve(vcl_matrix,     //using viennacl objects on GPU
 	//                      vcl_rhs,
         //              viennacl::linalg::cg_tag());
@@ -414,7 +466,8 @@ ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);
 //
 // Conjugate gradient solver using ILUT preconditioner
 //
-/*ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
+/*
+ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
                       ublas_rhs,
                       viennacl::linalg::cg_tag(), 
                       ublas_ilut);
@@ -437,15 +490,22 @@ ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
-	else{
+	else*/
+	{
 		#pragma omp parallel for
 		for(int j = 1; j < sGrid->nY-1; ++j) {
 			for(int i = 1; i < sGrid->nX-1; ++i) {
 				int index = i + sGrid->nX*j;
-				sGrid->p(j,i) = pressure[index];
+				if(!isnanf(ublas_result[index]))
+				sGrid->p(j,i) = ublas_result[index];
 			}
 		}
 		double scale = dt / (1 * sGrid->dx); // book define rho value before use
+		//std::cout<<"copy dioe"<<std::endl;	
+	
+	//Printer * print = new Printer();	
+	
+	//print->matrices(sGrid->p);
 		
 		#pragma omp parallel for
 		for(int y=1; y < sGrid->nY-1;y++)
@@ -455,7 +515,7 @@ ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);
 				}
 
 				if(sGrid->cellType(y,x) == FLUID && sGrid->cellType(y-1,x) == AIR){
-					sGrid->v(y,x) -= scale * ((sGrid->p(y,x)) - (sGrid->p(y-1,x)));
+					sGrid->v(y,x) -= scale * ((sGrid->p(y,x)) - (sGrid->p(y+1,x)));
 				}
 
 				if(sGrid->cellType(y,x) == FLUID){
@@ -464,12 +524,14 @@ ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);
 				}
 			}
 	}
+	
+	//std::cout<<"done once"<<std::endl;	
+	
 
 
 
 
 
-*/
 
 
 
@@ -541,11 +603,13 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
 	int iterations;
+	
 	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
 	else{
+		//matrix<double> p = sGrid->p;
 		#pragma omp parallel for
 		for(int j = 1; j < sGrid->nY-1; ++j) {
 			for(int i = 1; i < sGrid->nX-1; ++i) {
@@ -554,7 +618,7 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 			}
 		}
 		double scale = dt / (1 * sGrid->dx); // book define rho value before use
-		
+	
 		#pragma omp parallel for
 		for(int y=1; y < sGrid->nY-1;y++)
 			for(int x=1; x < sGrid->nX-1;x++){

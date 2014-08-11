@@ -3,6 +3,39 @@
 #ifndef _FLUIDSIM_H
 #define _FLUIDSIM_H
 
+#define NDEBUG
+
+#include <boost/numeric/ublas/io.hpp>
+#include <boost/numeric/ublas/triangular.hpp>
+#include <boost/numeric/ublas/matrix_sparse.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/matrix_proxy.hpp>
+#include <boost/numeric/ublas/operation.hpp>
+#include <boost/numeric/ublas/operation_sparse.hpp>
+#include <boost/numeric/ublas/io.hpp>
+#include <boost/numeric/ublas/lu.hpp>
+
+// Must be set if you want to use ViennaCL algorithms on ublas objects
+#define VIENNACL_HAVE_UBLAS 1
+
+//
+// ViennaCL includes
+//
+#include "viennacl/linalg/ilu.hpp"
+#include "viennacl/linalg/cg.hpp"
+#include "viennacl/linalg/bicgstab.hpp"
+#include "viennacl/linalg/gmres.hpp"
+#include "viennacl/io/matrix_market.hpp"
+
+// Some helper functions for this tutorial:
+
+//#include "Random.hpp"
+#include "vector-io.hpp"
+
+
+
+
+
 
 #include "GridStag.h"
 #include "Particles.h"
@@ -17,11 +50,14 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include "viennacl/linalg/ilu.hpp"
-
+#include "viennacl/io/matrix_market.hpp"
+//#include "Random.hpp"
+//#include "vector-io.hpp"
+	
 //#include "viennacl/linalg/direct_solve.hpp"
 #include "viennacl/linalg/cg.hpp"
 //#include "viennacl/linalg/inner_prod.hpp"
-using namespace boost::numeric::ublas ;
+	using namespace boost::numeric::ublas ;
 //using namespace viennacl::linalg;
 
 #include "ParameterFLAGS.hpp"
