@@ -83,8 +83,9 @@ void  FluidSim :: simulate(double timestep)
 		gettimeofday(&tt1, NULL);
 
 //		solvePressureEigen((float)dt);
-//		solvePressureBridson((float)dt);
-		solvePressureViennacl((float)dt);
+
+		solvePressureBridson((float)dt);
+//		solvePressureViennacl((float)dt);
 		gettimeofday(&tt2, NULL);
 		double solvePressureBridsonTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
 		applyBoundaryConditions(VELOCITY_BC2);
