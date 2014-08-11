@@ -83,7 +83,6 @@ void  FluidSim :: simulate(double timestep)
 		gettimeofday(&tt1, NULL);
 
 //		solvePressureEigen((float)dt);
-
 		solvePressureBridson((float)dt);
 //		solvePressureViennacl((float)dt);
 		gettimeofday(&tt2, NULL);
@@ -109,7 +108,7 @@ void  FluidSim :: simulate(double timestep)
 				<<solvePressureBridsonTime<<" extrapolate2DTime: "<<extrapolate2DTime
 				<<" calculateLevelSetDistanceTime : "<<calculateLevelSetDistanceTime
 				<<" markFluidCells : "<<markFluidCellsTime<<endl;;*/
-cout<<cflTime<<" "<<advectParticlesTime<<" "
+		cout<<cflTime<<" "<<advectParticlesTime<<" "
 				<<advect2DSelfTime<<" "<<applyBoundaryConditionsTime
 				<<" "<<addGravityTime<<" "
 				<<solvePressureBridsonTime<<" "<<extrapolate2DTime
@@ -315,25 +314,12 @@ void FluidSim::solvePressureEigen(float dt) { //keep
 using namespace boost::numeric;
 void FluidSim::solvePressureViennacl(float dt) { //keep
 
-	typedef float ScalarType;
-//typedef double    ScalarType; //use this if your GPU supports double precision
- 
-// Set up some ublas objects:
-/*	boost::numeric::ublas::vector<ScalarType> ublas_rhs;
-
-	boost::numeric::ublas::vector<ScalarType> ublas_result;
-	boost::numeric::ublas::compressed_matrix<ScalarType> ublas_matrix;
-*/
+  typedef float ScalarType;
   ublas::vector<ScalarType> ublas_rhs;
   ublas::vector<ScalarType> ublas_result;
   ublas::compressed_matrix<ScalarType> ublas_matrix;
 
 
-// Initialize and fill all objects here 
- 
-//SparseMatrixd matrix1;
-//	std::vector<double> rhs;
-//	std::vector<double> pressure;
 	unsigned int sys_size = sGrid->nX*sGrid->nY;
 	ublas_rhs.resize(sys_size);
 	ublas_result.resize(sys_size);
@@ -341,39 +327,21 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 	
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
-	
-	 
+
+	struct timeval tt1, tt2;	
+
+//	#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
-	int index = i + sGrid->nX*j;
+		int index = i + sGrid->nX*j;
 			ublas_rhs[index] = 0;
 			ublas_result[index] = 0;
-			ublas_matrix(index, index) = 0;
+			ublas_matrix(index, index) = 0; //not allowed to do this access with omp parallel : segmentation fauld
 		}
 	}
 	
-	/*
-	  if (!viennacl::io::read_matrix_market_file(ublas_matrix, "mat65k.mtx"))
-  {
-    std::cout << "Error reading Matrix file" << std::endl;
-    return ;
-  }
-else{
-    std::cout << "reading Matrix file" << std::endl;
-}
-
-  if (!readVectorFromFile("rhs65025.txt", ublas_rhs))
-  {
-    std::cout << "Error reading RHS file" << std::endl;
-    return ;
-  }
-else
-{
-    std::cout << "reading rhs file" << std::endl;
-}*/
-
+	gettimeofday(&tt1, NULL);
 	
-	//#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
 			int index = i + sGrid->nX*j;
@@ -424,6 +392,9 @@ else
 	}
 
 
+	gettimeofday(&tt2, NULL);
+	double PCGSolverTimeS = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
+
 
 //
 // Compute ILUT preconditioners for CPU and for GPU objects:
@@ -438,8 +409,16 @@ typedef viennacl::linalg::ilut_precond<
 */
   //std::cout << "----- CG Test -----" << std::endl;
 
-  //ublas_result = viennacl::linalg::solve(ublas_matrix, ublas_rhs, viennacl::linalg::cg_tag());
+	
+	gettimeofday(&tt1, NULL);
+
+//  ublas_result = viennacl::linalg::solve(ublas_matrix, ublas_rhs, viennacl::linalg::cg_tag());
+
   ublas_result = viennacl::linalg::solve(ublas_matrix, ublas_rhs, viennacl::linalg::cg_tag(1e-6, 20), ublas_ilut);
+	
+	gettimeofday(&tt2, NULL);
+	double PCGSolverTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
+	cout<<"PCGSolverTime= "<<PCGSolverTime<<" "<<PCGSolverTimeS<<	endl;
 
 //std::cout<<"CGTESTDOne"<<std::endl;;
 
@@ -482,16 +461,6 @@ ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
 // for BiCGStab and GMRES, use the solver tags
 // viennacl::linalg::bicgstab_tag and viennacl::linalg::gmres_tag 
 // instead of viennacl::linalg::cg_tag in the calls above.  
-
-/*
-	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
-	double tolerance;
-	int iterations;
-	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
-	if(!success) {
-		cout<<"WARNING: Pressure solve failed!************************************************\n";
-	}
-	else*/
 	{
 		#pragma omp parallel for
 		for(int j = 1; j < sGrid->nY-1; ++j) {
@@ -502,11 +471,6 @@ ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
 			}
 		}
 		double scale = dt / (1 * sGrid->dx); // book define rho value before use
-		//std::cout<<"copy dioe"<<std::endl;	
-	
-	//Printer * print = new Printer();	
-	
-	//print->matrices(sGrid->p);
 		
 		#pragma omp parallel for
 		for(int y=1; y < sGrid->nY-1;y++)
@@ -525,18 +489,6 @@ ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
 				}
 			}
 	}
-	
-	//std::cout<<"done once"<<std::endl;	
-	
-
-
-
-
-
-
-
-
-
 }
 
 
@@ -552,7 +504,10 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 	//Build the linear system for pressure
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
-	#pragma omp parallel for	
+	struct timeval tt1, tt2;	
+	gettimeofday(&tt1, NULL);
+	
+//	#pragma omp parallel for	
 	for(int j = 1; j < sGrid->nY-1; ++j) {
 		for(int i = 1; i <  sGrid->nX-1; ++i) {
 			int index = i + sGrid->nX*j;
@@ -601,11 +556,19 @@ void FluidSim::solvePressureBridson(float dt) { //keep
 			}
 		}
 	}
-	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
+	gettimeofday(&tt2, NULL);
+	double PCGSolverTimeP	 = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
+	
+//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
 	int iterations;
-	
+
+	gettimeofday(&tt1, NULL);
 	bool success = solver.solve(matrix1, rhs, pressure, tolerance, iterations);
+	gettimeofday(&tt2, NULL);
+	double PCGSolverTime = (tt2.tv_sec - tt1.tv_sec) * 1000 + (tt2.tv_usec - tt1.tv_usec)/1000;
+	cout<<"bridson solver time : "<<PCGSolverTime<<" "<<PCGSolverTimeP<<endl;
+
 	if(!success) {
 		cout<<"WARNING: Pressure solve failed!************************************************\n";
 	}
