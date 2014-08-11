@@ -100,12 +100,18 @@ void  FluidSim :: simulate(double timestep)
 		//advect Particles
 		//advectParticles(sGrid->fluidParticles, sGrid->u,sGrid->v, dt);
 		//markFluidCells();
-		cout<<"cflTime: "<<cflTime<<" advectParticlesTime: "<<advectParticlesTime<<" advect2DSelfTime: "
+/*		cout<<"cflTime: "<<cflTime<<" advectParticlesTime: "<<advectParticlesTime<<" advect2DSelfTime: "
 				<<advect2DSelfTime<<" applyBoundaryConditionsTime: "<<applyBoundaryConditionsTime
 				<<" addGravityTime: "<<addGravityTime<<endl<<" solvePressureBridsonTime: "
 				<<solvePressureBridsonTime<<" extrapolate2DTime: "<<extrapolate2DTime
 				<<" calculateLevelSetDistanceTime : "<<calculateLevelSetDistanceTime
-				<<" markFluidCells : "<<markFluidCellsTime<<endl;;
+				<<" markFluidCells : "<<markFluidCellsTime<<endl;;*/
+cout<<cflTime<<" "<<advectParticlesTime<<" "
+				<<advect2DSelfTime<<" "<<applyBoundaryConditionsTime
+				<<" "<<addGravityTime<<" "
+				<<solvePressureBridsonTime<<" "<<extrapolate2DTime
+				<<" "<<calculateLevelSetDistanceTime
+				<<" "<<markFluidCellsTime<<endl;;
 
 	}
 
@@ -322,7 +328,7 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 	ublas_rhs.resize(sys_size);
 	ublas_result.resize(sys_size);
 	ublas_matrix.resize(sys_size,sys_size,false);
-/*	
+	
 	double scale =  (dt / (double)(sGrid->dx * sGrid->dx));
 	matrix<double>& cellType = sGrid->cellType;
 	//#pragma omp parallel for	
@@ -373,7 +379,56 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 						(sGrid->u(j,i+1) - sGrid->u(j,i) + sGrid->v(j+1,i) - sGrid->v(j,i))/(double)sGrid->dx ) );;// /(float)sGrid->dx;
 			}
 		}
-	}*/
+	}
+
+
+//
+// Compute ILUT preconditioners for CPU and for GPU objects:
+//
+viennacl::linalg::ilut_tag ilut_conf(10, 1e-5);  //10 entries, rel. tol. 1e-5
+typedef viennacl::linalg::ilut_precond< 
+                    boost::numeric::ublas::compressed_matrix<ScalarType> >     ublas_ilut_t;
+
+
+//preconditioner for ublas objects:
+ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);   
+ 
+//	viennacl::linalg::ilut_precond< 
+  //                  viennacl::compressed_matrix<ScalarType> >  vcl_ilut_t;
+	//preconditioner for ViennaCL objects:
+	//vcl_ilut_t vcl_ilut(vcl_matrix, ilut_conf);
+ 
+//
+// Conjugate gradient solver without preconditioner:
+//*/
+
+//ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
+ //                     ublas_rhs,
+  //  	                  viennacl::linalg::cg_tag());
+
+	//vcl_result    = solve(vcl_matrix,     //using viennacl objects on GPU
+	//                      vcl_rhs,
+        //              viennacl::linalg::cg_tag());
+ 
+ 
+//
+// Conjugate gradient solver using ILUT preconditioner
+//
+/*ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
+                      ublas_rhs,
+                      viennacl::linalg::cg_tag(), 
+                      ublas_ilut);
+*/
+
+	//vcl_result    = solve(vcl_matrix,     //using viennacl objects on GPU
+          //            vcl_rhs,
+            //          viennacl::linalg::cg_tag(),
+             //         vcl_ilut);
+  
+// for BiCGStab and GMRES, use the solver tags
+// viennacl::linalg::bicgstab_tag and viennacl::linalg::gmres_tag 
+// instead of viennacl::linalg::cg_tag in the calls above.  
+
 /*
 	//Solve the system using Robert Bridson's incomplete Cholesky PCG solver
 	double tolerance;
@@ -418,63 +473,6 @@ void FluidSim::solvePressureViennacl(float dt) { //keep
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-//
-// Compute ILUT preconditioners for CPU and for GPU objects:
-//
-//viennacl::linalg::ilut_tag ilut_conf(10, 1e-5);  //10 entries, rel. tol. 1e-5
-//typedef viennacl::linalg::ilut_precond< 
-  //                  boost::numeric::ublas::compressed_matrix<ScalarType> >     ublas_ilut_t;
-
-
-//preconditioner for ublas objects:
-//ublas_ilut_t ublas_ilut(ublas_matrix, ilut_conf);   
- 
-	//viennacl::linalg::ilut_precond< 
-//                    viennacl::compressed_matrix<ScalarType> >  vcl_ilut_t;
-	//preconditioner for ViennaCL objects:
-	//vcl_ilut_t vcl_ilut(vcl_matrix, ilut_conf);
- 
-//
-// Conjugate gradient solver without preconditioner:
-//*/
-
-//ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
-  //                    ublas_rhs,
-    //	                  viennacl::linalg::cg_tag());
-
-	//vcl_result    = solve(vcl_matrix,     //using viennacl objects on GPU
-	//                      vcl_rhs,
-        //              viennacl::linalg::cg_tag());
- 
- 
-//
-// Conjugate gradient solver using ILUT preconditioner
-//
-/*ublas_result  = solve(ublas_matrix,   //using ublas objects on CPU
-                      ublas_rhs,
-                      viennacl::linalg::cg_tag(), 
-                      ublas_ilut);
-*/
-
-	//vcl_result    = solve(vcl_matrix,     //using viennacl objects on GPU
-          //            vcl_rhs,
-            //          viennacl::linalg::cg_tag(),
-             //         vcl_ilut);
-  
-// for BiCGStab and GMRES, use the solver tags
-// viennacl::linalg::bicgstab_tag and viennacl::linalg::gmres_tag 
-// instead of viennacl::linalg::cg_tag in the calls above.  
 
 }
 
@@ -1098,3 +1096,4 @@ int FluidSim :: getNeighbours(matrix<double>mat, int comp, int i, int j, double 
 	}
 	return ncnt;
 }
+

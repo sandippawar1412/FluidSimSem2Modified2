@@ -145,12 +145,15 @@ void Renderer :: drawSquareFilled(double lbx,double lby,double rtx,double rty,do
 {
 
 		{
-		//	cout<<fillVal<<endl;
-			if(fillVal!=-2.0)
+			//std::cout<<fillVal<<std::endl;
+			//glColor3f(1,1,1);
+			
+			if(fillVal==-1.0)
 				glColor3f(0,0,0-fillVal);
 			if(fillVal>=0)
 				glColor3f(fillVal/6,fillVal/6,fillVal/6);
-
+					
+				
 
 			glBegin(GL_QUADS);
 			glVertex2f(lbx, lby);
@@ -192,7 +195,7 @@ void Renderer :: renderMat(matrix<double> mat,int mode)
 */
 
 				//drawSquare(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,fillFlag);//1: Filled grid,0:wire Frame
-				drawSquare(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,(int)mat(i,j));//1: Filled grid,0:wire Frame
+				//drawSquare(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,(int)mat(i,j));//1: Filled grid,0:wire Frame
 				gridLBX+=stepX;
 			}
 			gridLBY += stepY;
@@ -200,19 +203,17 @@ void Renderer :: renderMat(matrix<double> mat,int mode)
 		}
 		break;
 		case 2 :
-
-	//	int max  = 6;
 		for (unsigned int i=0;i<mat.size1();i++){
 			for (unsigned int j=0;j<mat.size2();j++){
-				double fillVal = -2.0;
+				double fillVal = 0.0;
 				if(i==0||j==0||i==mat.size1()-1||j==mat.size2()-1)
 				{
 					//glColor3f(0.2,0.2,0.2);//set fill color..used if fillFlag=true
 					//drawSquareFilled(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,fillVal);//1: following airs color
 				}
 				else{
-					fillVal  = mat(i,j);//(double)abs(mat(i,j))/max ;
-					drawSquareFilled(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,fillVal);//1: Filled grid,0:wire Frame
+					fillVal  = (mat(i,j));// /max *2.0;
+					drawSquareFilled(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,(double)fillVal);//1: Filled grid,0:wire Frame
 						//drawSquare(gridLBX,gridLBY,gridLBX+stepX,gridLBY+stepY,(int)mat(i,j));//1: Filled grid,0:wire Frame
 
 				}
@@ -226,7 +227,7 @@ void Renderer :: renderMat(matrix<double> mat,int mode)
 
 
 	}
-	renderBoundary();
+	//renderBoundary();
 }
 
 
@@ -413,10 +414,10 @@ void Renderer :: renderDen2D_Stam()
 			y = (i+0.5f)*h;
 			for ( j=0 ; j < sGrid->nX - 1 ; j++ ) {
 				x = (j+0.5f)*h; // this 0.5 matter is difficult to understand..if removed smoothness reduces..
-				d00 = sGrid->d(i,j);
-				d01 = sGrid->d(i,j+1);
-				d10 = sGrid->d(i+1,j);
-				d11 = sGrid->d(i+1,j+1);
+				d00 = sGrid->p(i,j);
+				d01 = sGrid->p(i,j+1);
+				d10 = sGrid->p(i+1,j);
+				d11 = sGrid->p(i+1,j+1);
 
 				glColor3f ( d00, d00, d00 ); glVertex2f ( x, y );
 				glColor3f ( d10, d10, d10 ); glVertex2f ( x, y+h );
@@ -563,5 +564,6 @@ void Renderer :: renderSurfaceBoundary() {
 
         }
 }
+
 
 

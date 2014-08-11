@@ -1,4 +1,5 @@
 #include "commonData.h"
+#include "keyboard.h"
 #include "main.h"
 #include <time.h>
 #include <pthread.h>
@@ -9,7 +10,7 @@
 //#include "viennacl/vector.hpp"
 
 #define WG  //WG - With Graphics
-#undef WG
+//#undef WG
 
 int grid_size;
 int nthreads;
@@ -105,10 +106,10 @@ int main(int argc, char** argv)
    return 0; 
 }
 #endif
-
+	
 void display(void){
 	preDisplay();
-	static bool flag[10]={true,true,true,true,true,false};
+	static bool flag[10]={false,false,false,false,false,true};//boundary grid particles surface vector mat
 
 	char output1 = ' ';
 	bool anyUpdation = false;
@@ -148,7 +149,28 @@ void display(void){
 			         " $"<<flag[4]<<" %"<<flag[5]/*<<" ^"<<flag[6]*/<<"   +"<<endl;
 		anyUpdation = false;
 	}
-	if(flag[0])
+	extern int swich;
+	if(swich==0){
+		
+		render->renderBoundary();
+		render->renderGrid();
+		render->renderParticles();
+		render->renderSurfaceBoundary();
+	}
+	else if(swich==1){
+		render->renderMat(sGrid->p,2);
+	}
+	else if(swich==2){
+		render->renderMat(sGrid->distanceLevelSet,2);
+	}
+	else if(swich==3){
+		render->renderBoundary();
+		render->renderGrid();
+		render->renderVector2D(sGrid->u,sGrid->v); 
+		}
+	
+	
+	/*if(flag[0])
 		render->renderBoundary();
 	if(flag[1])
 		render->renderGrid();
@@ -157,9 +179,10 @@ void display(void){
 	if(flag[3])
 		render->renderSurfaceBoundary();
 	if(flag[4])
-		render->renderVector2D(sGrid->u,sGrid->v);
-	if(flag[5])
-		render->renderMat(sGrid->distanceLevelSet,2);
+		render->renderVector2D(sGrid->u,sGrid->v); */
+	//if(flag[5])
+		//render->renderMat(sGrid->distanceLevelSet,2);
+		//render->renderMat(sGrid->p,2);
 	/*if(flag[6])
 		render->renderMat(sGrid->isFluidBoundary,1);
 */
@@ -168,6 +191,8 @@ void display(void){
 }
 void idleFun ( void )
 {
+	extern bool isPause ;
+	if(!isPause){
 	struct timeval tt1, tt2;
 	static int it = 0;
 	static struct timeval tt3, tt4;
@@ -185,6 +210,7 @@ void idleFun ( void )
 	it++;
 	glutSetWindow ( winId );
 	glutPostRedisplay ( );
+	}
 }
 
 void reshape (int w, int h)
@@ -225,7 +251,8 @@ void openGlutWindow(char* windowName)
    glutSwapBuffers();
    glutDisplayFunc(display);
 //   glutSpecialFunc(&SpecialKeyPressed);
-//   glutKeyboardFunc(&KeyPressed);
+   glutKeyboardFunc(&KeyPressed);
    glutReshapeFunc(reshape);
    glutIdleFunc(idleFun);
 }
+

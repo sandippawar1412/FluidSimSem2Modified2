@@ -16,10 +16,10 @@
 //using namespace Eigen;
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
-//#include "viennacl/linalg/ilu.hpp"
+#include "viennacl/linalg/ilu.hpp"
 
 //#include "viennacl/linalg/direct_solve.hpp"
-//#include "viennacl/linalg/cg.hpp"
+#include "viennacl/linalg/cg.hpp"
 //#include "viennacl/linalg/inner_prod.hpp"
 using namespace boost::numeric::ublas ;
 //using namespace viennacl::linalg;
@@ -79,3 +79,4 @@ public:
 	int getNeighbours(matrix<double>mat, int comp, int i, int j, double &nval);
 };
 #endif
+

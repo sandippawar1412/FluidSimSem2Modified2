@@ -1,6 +1,7 @@
-//#ifndef _KEYBOARD_H
-//#define _KEYBOARD_H
-//#include <stdlib.h>
+#ifndef _KEYBOARD_H
+#define _KEYBOARD_H
+#include <stdlib.h>
+#include <iostream>
 //#include "commonData.h"
 ///*
 //#define VEL 1
@@ -44,12 +45,22 @@
 //
 ////enum fluidBody{ DAM_BREAK=1,DAM_CENTER=2,STATIC_BED=3,DOUBLE_DAM=4} fBT=DAM_CENTER ; //fluidBodyType
 //
-//void KeyPressed (unsigned char key, int x, int y)
-//{
-//	if (key==27)
-//		exit(0);
-//	switch( (key) )
-//	{
+bool isPause = false;
+int swich = 0;
+void KeyPressed (unsigned char key, int x, int y)
+{
+	if (key==27)
+		exit(0);
+	switch( (key) )
+	{
+		
+		case 'p' :
+				isPause = !isPause;
+				std::cout<<isPause<<std::endl;
+				break;
+		case 's':
+				swich = (swich+1)%4;
+				break;	
 //		default:
 //			output1 = key;
 //			anyUpdation = true;
@@ -147,8 +158,9 @@
 //
 //
 //
-//	}
-//}
+	}
+}
 //
 //
-//#endif
+#endif
+

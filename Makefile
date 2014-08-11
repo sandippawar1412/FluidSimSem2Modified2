@@ -30,7 +30,8 @@ clean:
 GridStag.o : GridStag.h ParameterFLAGS.hpp
 Renderer.o : Renderer.h
 FluidSim.o : FluidSim.h ./pcgsolver/*.h ParameterFLAGS.hpp helper.h
-main.o : main.h commonData.h ParameterFLAGS.hpp
+main.o : main.h commonData.h ParameterFLAGS.hpp keyboard.h
 Printer.o : Printer.h
 Particles.o : Particles.h
+
 
